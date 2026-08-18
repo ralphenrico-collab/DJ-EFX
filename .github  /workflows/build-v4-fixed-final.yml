@@ -1,0 +1,55 @@
+name: DJ EFX V4 FIXED FINAL
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract FIXED V4
+        run: |
+          rm -rf project
+          mkdir project
+          unzip -q DJ_EFX_V4_FIXED.zip -d project
+
+      - name: Find Android project
+        id: project
+        run: |
+          SETTINGS=$(find project -type f \( -name settings.gradle -o -name settings.gradle.kts \) | head -1)
+
+          if [ -z "$SETTINGS" ]; then
+            echo "Android project not found"
+            find project -maxdepth 8 -type f
+            exit 1
+          fi
+
+          DIR=$(dirname "$SETTINGS")
+          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
+          echo "Building from: $DIR"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Build APK
+        run: |
+          gradle -p "${{ steps.project.outputs.dir }}" assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DJ-EFX-V4-FIXED-APK
+          path: project/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
